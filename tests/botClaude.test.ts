@@ -1052,7 +1052,9 @@ test("the request after a tool call runs in a process started ahead of it, and n
       a.equal((await ask(history)).message.content[0].type, "tool_use");
       await until(() => started().length === 2, "no standby was started");
       a.equal(bridge.standbyClaudeProcessCount(), 1);
-      const [first, second] = started();
+      // The first process and its standby start together and each logs its own line, so the log order isn't the spawn order: the one that answered is the first.
+      const [first] = answered();
+      const second = started().find((pid) => pid !== first);
       a.deepEqual(answered(), [first]);
 
       // It ended in a tool call, so the next one can't carry on there: the standby answers, and is replaced.
