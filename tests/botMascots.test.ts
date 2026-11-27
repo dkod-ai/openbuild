@@ -118,6 +118,7 @@ describe.skipIf(!browser)("bots dozing in a group", () => {
     const page = await open();
     // Boo (amber) starts work: awake at once, with a stretch, its eyes opening and its body coming up.
     await watchTransitions(page);
+    await page.eval(`(window.dozeLoops = 0, document.addEventListener('animationstart', (e) => { if (e.target.classList.contains('bot-doze')) window.dozeLoops++; }, true), true)`);
     await setWorking(page, ["moss", "boo"]);
     await page.settle();
     const boo = devBot("amber");
@@ -126,6 +127,10 @@ describe.skipIf(!browser)("bots dozing in a group", () => {
     expect(waking.some((t) => t.on === "bot-eye-fill" && t.property === "transform" && t.duration >= 100)).toBe(true);
     expect(waking.some((t) => t.on === "bot-doze" && t.duration >= 400)).toBe(true);
     expect(waking.some((t) => t.on === "bot-nap" && t.duration >= 400)).toBe(true);
+    // The slump layer eases back by its transition alone: no keyframe loop ever runs on it (an idle
+    // loop there would replace the lean at once, and the bot would snap upright as it woke).
+    expect(await page.eval<number>(`[...document.querySelectorAll('.bot-doze')].filter((el) => el.getAnimations().some((a) => a instanceof CSSAnimation)).length`)).toBe(0);
+    expect(await page.eval<number>(`window.dozeLoops`)).toBe(0);
 
     // It stops: the eyes grow heavy and shut slowly, as the face drops and the body slumps, slower still.
     await Bun.sleep(1200);
